@@ -3,7 +3,7 @@ from base.models import BaseModel
 # Create your models here.
 
 
-class AudioRecord(models.Model):
+class AudioRecord(BaseModel):
     audio_file = models.FileField(upload_to='media/audio_files/', null=True, blank=True)
     source = models.TextField()
     edit_source = models.TextField(null=True, blank=True)

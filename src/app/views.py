@@ -7,23 +7,26 @@ from rest_framework import status
 from rest_framework.views import APIView
 from .models import AudioRecord
 from rest_framework.parsers import MultiPartParser
-from .serializers import AudioRecordSerializer
+from .serializers import *
 import requests
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 import base64
+import os
+from rest_framework import status
+import json
 
 # Set up URL and headers as constants
 ASR_API_URL = "https://dhruva-api.bhashini.gov.in/services/inference/pipeline"
 ASR_API_HEADERS = {
     "Content-Type": "application/json",
-    "Authorization": "PcYD3f6WgosaSlLXLa7K7f5OteKLYQ6Cjyn0dyHEt2Fm7Ho7Sq-oo44N73XZvdDs"
+    "Authorization": os.getenv("BHASHINI_AUTHORIZATION")
 }
 
 ASR_API_URL = "https://dhruva-api.bhashini.gov.in/services/inference/pipeline"
 ASR_API_HEADERS = {
     "Content-Type": "application/json",
-    "Authorization": "PcYD3f6WgosaSlLXLa7K7f5OteKLYQ6Cjyn0dyHEt2Fm7Ho7Sq-oo44N73XZvdDs"
+    "Authorization": os.getenv("BHASHINI_AUTHORIZATION")
 }
 
 class ProcessAudioView(APIView):
@@ -122,5 +125,17 @@ class AccRatingView(APIView):
 class FetchAllAudioRecordsView(APIView):
     def get(self, request):
         # Fetch all audio records synchronously
-        records = AudioRecord.objects.values('id', 'source', 'edit_source', 'sentiment_analysis', 'rating')
-        return JsonResponse(list(records), safe=False, status=status.HTTP_200_OK)
+        records = AudioRecord.objects.values('id', 'audio_file', 'source', 'edit_source', 'created_at', 'updated_at')
+        return JsonResponse({"total_number": AudioRecord.objects.all().count(),"data":list(records)}, safe=False, status=status.HTTP_200_OK)
+
+
+class Hello(APIView):
+    def get(self, request, *args, **kwargs):
+        return Response({"hii":"hello"}, status=status.HTTP_200_OK)
+    
+
+# class ShowData(APIView):
+#     def get(self, request, *args, **kwargs):
+#         audio_records = AudioRecord.objects.all().order_by("id")
+#         data = AudioRecord.objects.values()
+#         return Response({ "total_number": AudioRecord.objects.all().count(),"response":data}, status=status.HTTP_200_OK)

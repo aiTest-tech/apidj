@@ -16,13 +16,6 @@ import os
 from rest_framework import status
 import json
 
-# Set up URL and headers as constants
-ASR_API_URL = "https://dhruva-api.bhashini.gov.in/services/inference/pipeline"
-ASR_API_HEADERS = {
-    "Content-Type": "application/json",
-    "Authorization": os.getenv("BHASHINI_AUTHORIZATION")
-}
-
 ASR_API_URL = "https://dhruva-api.bhashini.gov.in/services/inference/pipeline"
 ASR_API_HEADERS = {
     "Content-Type": "application/json",
@@ -30,24 +23,21 @@ ASR_API_HEADERS = {
 }
 
 class ProcessAudioView(APIView):
-    parser_classes = [MultiPartParser]  # Allows handling multipart form-data (for file uploads)
+    parser_classes = [MultiPartParser]  
 
     @swagger_auto_schema(request_body=AudioRecordSerializer)  
     def post(self, request):
-        # Use serializer to validate input data
         serializer = AudioRecordSerializer(data=request.data)
         print("request", request.data)
         print("request file", request.FILES)
         if not serializer.is_valid():
             return Response({"error": "File or language not provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Extract file and lang from validated data
         file = serializer.validated_data['file']
         lang = serializer.validated_data['lang']
         base64_audio = base64.b64encode(file.read()).decode('utf-8')
         service_id = "ai4bharat/conformer-multilingual-indo_aryan-gpu--t4" if lang != "en" else "ai4bharat/whisper-medium-en--gpu--t4"
 
-        # Prepare the payload without base64 encoding
         payload = {
             "pipelineTasks": [{
                 "taskType": "asr",
@@ -64,9 +54,6 @@ class ProcessAudioView(APIView):
             }
         }
 
-
-
-        # Synchronous API request using requests library
         response = requests.post(ASR_API_URL, headers=ASR_API_HEADERS, data=json.dumps(payload))
 
         if response.status_code != 200:
@@ -75,10 +62,10 @@ class ProcessAudioView(APIView):
         response_data = response.json()
         source_text = response_data['pipelineResponse'][0]['output'][0]['source']
 
-        # Save audio record to database
         record = AudioRecord.objects.create(source=source_text, audio_file=file)
 
         return Response({"text": source_text, 'id': record.id}, status=status.HTTP_200_OK)
+
 class SubmitAudioView(APIView):
     def post(self, request):
         data = request.data
@@ -88,7 +75,6 @@ class SubmitAudioView(APIView):
         record_id = data['id']
         text = data['text']
 
-        # Update the audio record
         try:
             record = AudioRecord.objects.get(id=record_id)
             record.edit_source = text
@@ -100,7 +86,6 @@ class SubmitAudioView(APIView):
         except AudioRecord.DoesNotExist:
             return JsonResponse({'status': 'fail', 'message': 'Record not found'}, status=status.HTTP_404_NOT_FOUND)
 
-
 class AccRatingView(APIView):
     def post(self, request):
         data = request.data
@@ -110,7 +95,6 @@ class AccRatingView(APIView):
         record_id = data['id']
         rating = data['rating']
 
-        # Update rating synchronously
         try:
             record = AudioRecord.objects.get(id=record_id)
             record.rating = rating
@@ -121,18 +105,22 @@ class AccRatingView(APIView):
         except AudioRecord.DoesNotExist:
             return JsonResponse({'status': 'fail', 'message': 'Record not found'}, status=status.HTTP_404_NOT_FOUND)
 
-
 class FetchAllAudioRecordsView(APIView):
     def get(self, request):
         # Fetch all audio records synchronously
         records = AudioRecord.objects.values('id', 'audio_file', 'source', 'edit_source', 'created_at', 'updated_at')
         return JsonResponse({"total_number": AudioRecord.objects.all().count(),"data":list(records)}, safe=False, status=status.HTTP_200_OK)
 
-
 class Hello(APIView):
     def get(self, request, *args, **kwargs):
         return Response({"hii":"hello"}, status=status.HTTP_200_OK)
+
+class SentimentRating(APIView):
+    def post(self, request, *args, **kwargs):
+        return Response({"Sentiment":model_pred}, status=status.HTTP_200_OK)
     
+
+
 
 # class ShowData(APIView):
 #     def get(self, request, *args, **kwargs):
